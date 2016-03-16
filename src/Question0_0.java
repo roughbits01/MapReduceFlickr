@@ -1,10 +1,17 @@
 
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Counter;
@@ -25,18 +32,17 @@ public class Question0_0 {
 	private static Counter skippedCountries;
 	private enum Compteur {SKIPPED_COUNTRIES};
 	
-	public static class MyMapper extends Mapper<LongWritable, Text, Text, Text> {
-		
-		
+	public static class MyMapper extends Mapper<LongWritable, Text, Text, StringAndInt> {
+				
 		@Override
-		protected void cleanup(Mapper<LongWritable, Text, Text, Text>.Context context)
+		protected void cleanup(Mapper<LongWritable, Text, Text, StringAndInt>.Context context)
 				throws IOException, InterruptedException {
 			// TODO Auto-generated method stub
 			super.cleanup(context);
 		}
 
 		@Override
-		protected void setup(Mapper<LongWritable, Text, Text, Text>.Context context)
+		protected void setup(Mapper<LongWritable, Text, Text, StringAndInt>.Context context)
 				throws IOException, InterruptedException {
 			// TODO Auto-generated method stub
 			super.setup(context);
@@ -55,28 +61,81 @@ public class Question0_0 {
 				skippedCountries.increment(1);
 			} else {
 				String tags = URLDecoder.decode(data[TAGS], "utf-8");
-				System.out.println(longitude + "-->" + tags);
-				System.out.println(country + "-->" + tags);
 				for(String tag: tags.split(",")) {
-					context.write(new Text(country.toString()), new Text(tag));
+					if (tag.replace("\\s+", "").isEmpty()) continue;
+					context.write(new Text(country.toString()), new StringAndInt(1, tag));
 				}	
 			}
 		}
 	}
 
-	public static class MyReducer extends Reducer<Text, Text, Text, Text> {
+	public static class MyReducer extends Reducer<Text, StringAndInt, Text, Text> {
+		
+		private Integer K; 		
+		
 		@Override
-		protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-			String sum = "";
-			for (Text value : values) {
-				sum += value.toString() + ",";
+		protected void setup(Reducer<Text, StringAndInt, Text, Text>.Context context) throws IOException, InterruptedException {
+			super.setup(context);
+			K = context.getConfiguration().getInt("K", 10);
+		}
+		
+		@Override
+		protected void reduce(Text key, Iterable<StringAndInt> values, Context context) throws IOException, InterruptedException {
+
+			Map<String, StringAndInt> counter = new HashMap<String, StringAndInt>(); 
+			
+			for (StringAndInt value : values) {
+				StringAndInt count = counter.get(value.getStringVal());
+				if (count == null) {
+					counter.put(value.getStringVal(), new StringAndInt(value.getIntVal(), value.getStringVal()));
+				} else {
+					count.setIntVal(count.getIntVal() + value.getIntVal());
+				}
 			}
-			context.write(key, new Text(sum));
+			
+			Collection<StringAndInt> vals = counter.values();
+			PriorityQueue<StringAndInt> heap = new PriorityQueue<StringAndInt>(vals.size(), Collections.reverseOrder());
+			heap.addAll(vals);
+
+			StringBuilder sb = new StringBuilder();
+			Integer count = 1;
+			while(!heap.isEmpty()) {
+				StringAndInt element = heap.poll();				
+				sb.append(element.getStringVal());
+		 	    if (count.equals(K) || heap.isEmpty()) break;
+		 	    count++;
+		 	    sb.append(", ");
+			}
+	        context.write(key, new Text(sb.toString()));
+		}
+	}
+	
+public static class MyCombiner extends Reducer<Text, StringAndInt, Text, StringAndInt> {	
+		
+		@Override
+		protected void reduce(Text key, Iterable<StringAndInt> values, Context context) throws IOException, InterruptedException {
+
+			Map<String, StringAndInt> counter = new HashMap<String, StringAndInt>(); 
+			
+			for (StringAndInt value : values) {
+				StringAndInt count = counter.get(value.getStringVal());
+				if (count == null) {
+					counter.put(value.getStringVal(), new StringAndInt(value.getIntVal(), value.getStringVal()));
+				} else {
+					count.setIntVal(count.getIntVal() + value.getIntVal());
+				}
+			}
+			
+			for (StringAndInt value: counter.values()) {
+				context.write(key, value);
+			}     
 		}
 	}
 
+
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
+		conf.setInt("K", 10);
 		String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 		String input = otherArgs[0];
 		String output = otherArgs[1];
@@ -86,11 +145,13 @@ public class Question0_0 {
 		
 		job.setMapperClass(MyMapper.class);
 		job.setMapOutputKeyClass(Text.class);
-		job.setMapOutputValueClass(Text.class);
+		job.setMapOutputValueClass(StringAndInt.class);
 
 		job.setReducerClass(MyReducer.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
+		
+		job.setCombinerClass(MyCombiner.class);
 		
 		FileInputFormat.addInputPath(job, new Path(input));
 		job.setInputFormatClass(TextInputFormat.class);
