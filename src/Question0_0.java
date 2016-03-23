@@ -132,8 +132,7 @@ public static class MyCombiner extends Reducer<Text, StringAndInt, Text, StringA
 		}
 	}
 
-
-	public static void main(String[] args) throws Exception {
+	/*public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
 		conf.setInt("K", 10);
 		String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
@@ -160,5 +159,5 @@ public static class MyCombiner extends Reducer<Text, StringAndInt, Text, StringA
 		job.setOutputFormatClass(TextOutputFormat.class);
 		
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
-	}
+	}*/
 }

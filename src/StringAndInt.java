@@ -21,7 +21,9 @@ public class StringAndInt implements Comparable<StringAndInt>, Writable {
 
 	@Override
 	public int compareTo(StringAndInt o) {
-        return this.getIntVal().compareTo(o.getIntVal());
+		int res = this.getIntVal().compareTo(o.getIntVal());
+		if (res == 0) return this.getStringVal().compareTo(o.getStringVal());
+		return res;
 	}
 	
 	public Integer getIntVal() {
