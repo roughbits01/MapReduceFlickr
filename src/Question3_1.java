@@ -19,21 +19,26 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+/**
+ * Class effectuant un job mapReduce en réponse à la question 3.1.
+ * Ce job composé permet un meilleur contrôle sur la taille de la mémoire utilisé (lors du reducer).
+ * En effet, via un premier job on compte le nombre d'occurence d'un tag par pays et un second job récuperera ainsi les K meilleurs.
+ */
 public class Question3_1 {
 	
 	private static final int LONGITUDE = 10;
 	private static final int LATITUDE = 11;
 	private static final int TAGS = 8;
-	
+
 	public static class MapperJob1 extends Mapper<LongWritable, Text, PairString, LongWritable> {
 
 		@Override
 		protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
 			
-			String[] data = value.toString().split("\\t");
+			String[] data = value.toString().split("\\t"); // Séparateurs des champs.
 			double longitude = Double.parseDouble(data[LONGITUDE]);
 			double latitude = Double.parseDouble(data[LATITUDE]);
-			Country country = Country.getCountryAt(latitude, longitude);
+			Country country = Country.getCountryAt(latitude, longitude); // Récupération du pays associé.
 			
 			if (country != null) {
 				String tags = URLDecoder.decode(data[TAGS], "utf-8");
@@ -45,8 +50,21 @@ public class Question3_1 {
 		}
 	}
 
+	// Ce reducer permet un première aggregation local des occurences de tags.
+	public static class CombinerJob1 extends Reducer<PairString, LongWritable, PairString, LongWritable> {
+
+		@Override
+		protected void reduce(PairString key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
+			long sum = 0;
+			for (LongWritable value : values) {
+				sum += value.get();
+			}
+			context.write(key, new LongWritable(sum));
+		}
+	}
+
+
 	public static class ReducerJob1 extends Reducer<PairString, LongWritable, PairString, LongWritable> {
-		
 
 		@Override
 		protected void reduce(PairString key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
@@ -85,7 +103,7 @@ public class Question3_1 {
 			PriorityQueue<StringAndInt> heap = new PriorityQueue<StringAndInt>(K);
 			
 			for (StringAndInt value: values) {
-				heap.add(new StringAndInt(value.getIntVal(), value.getStringVal()));
+				heap.add(new StringAndInt(value.getIntVal(), value.getStringVal().toString()));
 				if (heap.size() > K) heap.poll();	
 			}
 
@@ -94,7 +112,8 @@ public class Question3_1 {
 			PriorityQueue<StringAndInt> heap2 = new PriorityQueue<StringAndInt>(K, Collections.reverseOrder());
 			heap2.addAll(heap);
 			
-			for(StringAndInt value: heap2) {
+			while(!heap2.isEmpty()) {
+				StringAndInt value = heap2.poll();
 				sb.append(value.getStringVal()).append('#').append(value.getIntVal());
 		 	    sb.append(", ");
 			}
@@ -120,14 +139,16 @@ public class Question3_1 {
 		job1.setReducerClass(ReducerJob1.class);
 		job1.setOutputKeyClass(PairString.class);
 		job1.setOutputValueClass(LongWritable.class);
-		
+
+		job1.setCombinerClass(CombinerJob1.class);
+
 		FileInputFormat.addInputPath(job1, new Path(input));
 		job1.setInputFormatClass(TextInputFormat.class);
 		
 		FileOutputFormat.setOutputPath(job1, new Path(output));
 		job1.setOutputFormatClass(SequenceFileOutputFormat.class);
 				
-		if(job1.waitForCompletion(true)) {
+		if(job1.waitForCompletion(true)) { // si le premier job s'est terminé avec succès on lance le second.
 			Job job2 = Job.getInstance(conf, "Question3_1");
 			job2.setJarByClass(Question3_1.class);
 			
@@ -148,8 +169,5 @@ public class Question3_1 {
 		} else {
 			System.exit(1);
 		}
-		
-		
-		
 	}
 }

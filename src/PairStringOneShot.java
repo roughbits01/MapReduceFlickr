@@ -5,39 +5,39 @@ import java.io.IOException;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.WritableComparable;
 
-public class PairString implements WritableComparable<PairString> {
-
+public class PairStringOneShot implements WritableComparable<PairStringOneShot>  {
+	
 	private String first;
 	
 	private String second;
 	
-
+	
 	public String getFirst() {
 		return first;
 	}
-	
+
 	public void setFirst(String first) {
 		this.first = first;
 	}
-	
+
 	public String getSecond() {
 		return second;
 	}
-	
+
 	public void setSecond(String second) {
 		this.second = second;
 	}
-	
-	public PairString(String first, String second) {
+
+	public PairStringOneShot() {
+		super();
+	}
+
+	public PairStringOneShot(String first, String second) {
 		super();
 		this.first = first;
 		this.second = second;
 	}
-	
-	public PairString() {
-		super();
-	}
-	
+
 	@Override
 	public void readFields(DataInput arg0) throws IOException {
 		Text t = new Text();
@@ -56,15 +56,10 @@ public class PairString implements WritableComparable<PairString> {
 	}
 
 	@Override
-	public String toString() {
-		return "PairString [first=" + first + ", second=" + second + "]";
-	}
-
-	@Override
-	public int compareTo(PairString arg0) {
+	public int compareTo(PairStringOneShot arg0) {
 		int res = this.first.compareTo(arg0.first);
-		if (res == 0) return this.second.compareTo(arg0.second);
+		//if (res == 0) return this.second.compareTo(arg0.second);
 		return res;
 	}
-	
+
 }
