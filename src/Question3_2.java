@@ -73,21 +73,6 @@ public class Question3_2 {
 		}
 	}
 
-    // Les données dans le combiner arrivent par clé différentes de pays et tags. On peut donc commencer à compter.
-    public static class Combiner extends Reducer<PairStringOneShot, StringAndInt, PairStringOneShot, StringAndInt> {
-
-        @Override
-        protected void reduce(PairStringOneShot key, Iterable<StringAndInt> values, Context context) throws IOException, InterruptedException {
-            int sum = 0;
-            for (StringAndInt value : values) {
-                sum += value.getIntVal();
-
-            }
-            context.write(key, new StringAndInt(sum, key.getSecond()));
-        }
-
-    }
-
 	public static class MyReducer extends Reducer<PairStringOneShot, StringAndInt, Text, Text> {
 		
 		private Integer K; 		
@@ -125,7 +110,7 @@ public class Question3_2 {
 
 			while(!heap2.isEmpty()) {
 				StringAndInt value = heap2.poll();
-				sb.append(value.getStringVal()).append('#').append(value.getIntVal());
+				sb.append(value.getStringVal());
 				sb.append(", ");
 			}
 			context.write(new Text(key.getFirst()), new Text(sb.toString()));
@@ -142,7 +127,6 @@ public class Question3_2 {
 		@SuppressWarnings("rawtypes")
 		@Override
 		public int compare(WritableComparable w1, WritableComparable w2) {
-			System.out.println("compare!");
 			PairStringOneShot k1 = (PairStringOneShot)w1;
 			PairStringOneShot k2 = (PairStringOneShot)w2;
 
@@ -171,7 +155,7 @@ public class Question3_2 {
 
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		conf.setInt("K", 1000);
+		conf.setInt("K", 5);
 		String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 		String input = otherArgs[0];
 		String output = otherArgs[1];
@@ -187,8 +171,6 @@ public class Question3_2 {
 		job.setMapperClass(MyMapper.class);
 		job.setMapOutputKeyClass(PairStringOneShot.class);
 		job.setMapOutputValueClass(StringAndInt.class);
-
-        job.setCombinerClass(Combiner.class);
 
 		job.setReducerClass(MyReducer.class);
 		job.setOutputKeyClass(Text.class);

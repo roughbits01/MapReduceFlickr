@@ -6,13 +6,12 @@ Cette archive contient les dossiers suivants :
 
     ├── lib
     ├── rapport
-    ├── README.md
     ├── README.txt
     ├── rapport.pdf
     └── src
 
 Le dossier rapport contient les sources de notre rapport.
-Le dossier src contients le sources de notre TP.
+Le dossier src contient le sources de notre TP.
 Il est composé des fichiers suivant :
 
     src
